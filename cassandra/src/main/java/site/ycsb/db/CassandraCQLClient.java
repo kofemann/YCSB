@@ -117,6 +117,10 @@ public class CassandraCQLClient extends DB {
   public static final String USE_SSL_CONNECTION = "cassandra.useSSL";
   private static final String DEFAULT_USE_SSL_CONNECTION = "false";
 
+  public static final String EXCLUSIVE_PROPERTY = "cassandra.exclusive";
+  public static final String EXCLUSIVE_PROPERTY_DEFAULT = "false";
+
+
   /**
    * Count the number of times initialized to teardown on the last
    * {@link #cleanup()}.
@@ -126,7 +130,8 @@ public class CassandraCQLClient extends DB {
   private static boolean debug = false;
 
   private static boolean trace = false;
-  
+
+  private static boolean exclusive = false;
   /**
    * Initialize any state for this DB. Called once per DB instance; there is one
    * DB instance per client thread.
@@ -151,6 +156,9 @@ public class CassandraCQLClient extends DB {
         debug =
             Boolean.parseBoolean(getProperties().getProperty("debug", "false"));
         trace = Boolean.valueOf(getProperties().getProperty(TRACING_PROPERTY, TRACING_PROPERTY_DEFAULT));
+
+        exclusive =
+            Boolean.valueOf(getProperties().getProperty(EXCLUSIVE_PROPERTY, EXCLUSIVE_PROPERTY_DEFAULT));
 
         String host = getProperties().getProperty(HOSTS_PROPERTY);
         if (host == null) {
@@ -480,7 +488,11 @@ public class CassandraCQLClient extends DB {
         }
 
         // Add key
-        updateStmt.where(QueryBuilder.eq(YCSB_KEY, QueryBuilder.bindMarker()));
+        Update.Where whereCondition = updateStmt.where(QueryBuilder.eq(YCSB_KEY, QueryBuilder.bindMarker()));
+
+        if (exclusive) {
+          whereCondition.ifExists();
+        }
 
         stmt = session.prepare(updateStmt);
         stmt.setConsistencyLevel(writeConsistencyLevel);
@@ -545,6 +557,11 @@ public class CassandraCQLClient extends DB {
       // Prepare statement on demand
       if (stmt == null) {
         Insert insertStmt = QueryBuilder.insertInto(table);
+
+        if (exclusive) {
+          insertStmt = insertStmt.ifNotExists();
+        }
+
 
         // Add key
         insertStmt.value(YCSB_KEY, QueryBuilder.bindMarker());

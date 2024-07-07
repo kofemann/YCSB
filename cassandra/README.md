@@ -84,3 +84,7 @@ For keyspace `ycsb`, table `usertable`:
 * `cassandra.tracing`
   * Default is false
   * https://docs.datastax.com/en/cql/3.3/cql/cql_reference/tracing_r.html
+* `cassandra.exclusive`
+   Whatever the INSERTS and UPDATE operations should conditionally check the existence of
+   a row with a given key.
+  * Default is false
